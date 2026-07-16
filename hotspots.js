@@ -76,5 +76,5 @@ const hotspots = [
         coordinates: [51.497273, 25.307632],
         buttonLabel: "See menu",
         link: "https://blank"
-      }
+      },
     ];
