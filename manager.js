@@ -62,7 +62,7 @@
     el.title = item.title;
     const iconKey = icons[item.icon] ? item.icon : (defaultIcons[item.filterCategory] || "default");
     el.innerHTML = icons[iconKey];
-    Object.assign(el.style,{position:"relative",display:"grid",width:"42px",height:"42px",placeItems:"center",color:"#071d49",background:"#f28c28",border:"3px solid white",borderRadius:"50%",boxShadow:"0 0 0 3px #c8102e",cursor:"pointer"});
+    Object.assign(el.style,{display:"grid",width:"42px",height:"42px",placeItems:"center",color:"#071d49",background:"#f28c28",border:"3px solid white",borderRadius:"50%",boxShadow:"0 0 0 3px #c8102e",cursor:"pointer"});
     el.querySelector("svg").style.cssText = "display:block;width:24px;height:24px";
     el.addEventListener("click", () => editItem(index));
     return new mapboxgl.Marker({element:el,anchor:"center"}).setLngLat(item.coordinates).addTo(map);
@@ -136,9 +136,47 @@
   function importJson() { fileInput.value=""; fileInput.click(); }
   fileInput.addEventListener("change", async()=>{ const file=fileInput.files[0]; if(!file)return; try { const parsed=JSON.parse(await file.text()); if(!Array.isArray(parsed))throw new Error("The JSON must contain an array."); if(!confirm(`Replace the manager list with ${parsed.length} imported hotspots?`))return; items=parsed; persist(); renderList(); renderMapMarkers(); resetForm(); show(listMessage,`Imported ${items.length} hotspots.`); } catch(err){ show(listMessage,err.message||"Could not import that JSON file.","error"); } });
 
+  async function fetchPublishedData() {
+    const response = await fetch(`hotspots.json?v=${Date.now()}`, { cache: "no-store" });
+    if (!response.ok) throw new Error(`Could not load hotspots.json (${response.status})`);
+    const parsed = await response.json();
+    if (!Array.isArray(parsed)) throw new Error("hotspots.json must contain an array.");
+    return parsed;
+  }
+
+  async function reloadPublishedData() {
+    try {
+      const published = await fetchPublishedData();
+      if (!confirm(`Replace the current manager draft with ${published.length} published hotspots?`)) return;
+      items = published;
+      persist();
+      renderList();
+      renderMapMarkers();
+      resetForm();
+      show(listMessage, `Reloaded ${items.length} published hotspots.`);
+    } catch (err) {
+      show(listMessage, err.message || "Could not reload hotspots.json.", "error");
+    }
+  }
+
   async function loadInitialData() {
-    try { const saved=JSON.parse(localStorage.getItem(storageKey)); if(Array.isArray(saved)){items=saved;} else throw new Error(); }
-    catch { const response=await fetch("hotspots.json",{cache:"no-store"}); if(!response.ok)throw new Error(`Could not load hotspots.json (${response.status})`); items=await response.json(); }
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey));
+      if (Array.isArray(saved) && saved.length > 0) {
+        items = saved;
+      } else {
+        items = await fetchPublishedData();
+        persist();
+      }
+    } catch (err) {
+      try {
+        items = await fetchPublishedData();
+        persist();
+      } catch (fetchError) {
+        items = [];
+        show(listMessage, fetchError.message || "Could not load hotspot data.", "error");
+      }
+    }
     renderList(); renderMapMarkers(); resetForm();
   }
 
@@ -146,6 +184,6 @@
   fields.venueType.addEventListener("change",()=>{ const {filterCategory}=venueValues(); if(!iconWasManuallyChosen)chooseIcon(defaultIcons[filterCategory]||"default"); updatePreview(); });
   Object.values(fields).forEach(field=>{field.addEventListener("input",updatePreview); field.addEventListener("change",updatePreview);});
   $("save").addEventListener("click",saveItem); $("new").addEventListener("click",resetForm); $("deleteSelected").addEventListener("click",()=>{if(selectedIndex!==null)deleteItem(selectedIndex);}); $("search").addEventListener("input",renderList);
-  $("downloadTop").addEventListener("click",downloadJson); $("downloadBottom").addEventListener("click",downloadJson); $("importTop").addEventListener("click",importJson); $("importBottom").addEventListener("click",importJson);
+  $("downloadTop").addEventListener("click",downloadJson); $("downloadBottom").addEventListener("click",downloadJson); $("importTop").addEventListener("click",importJson); $("importBottom").addEventListener("click",importJson); $("reloadTop").addEventListener("click",reloadPublishedData); $("reloadBottom").addEventListener("click",reloadPublishedData);
   map.on("load",loadInitialData);
 })();
