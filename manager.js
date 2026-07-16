@@ -61,10 +61,9 @@
     el.type = "button";
     el.title = item.title;
     const iconKey = icons[item.icon] ? item.icon : (defaultIcons[item.filterCategory] || "default");
-    el.innerHTML = `${icons[iconKey]}<span>${esc(item.number)}</span>`;
+    el.innerHTML = icons[iconKey];
     Object.assign(el.style,{position:"relative",display:"grid",width:"42px",height:"42px",placeItems:"center",color:"#071d49",background:"#f28c28",border:"3px solid white",borderRadius:"50%",boxShadow:"0 0 0 3px #c8102e",cursor:"pointer"});
-    el.querySelector("svg").style.cssText = "width:21px;height:21px";
-    const badge = el.querySelector("span"); Object.assign(badge.style,{position:"absolute",right:"-7px",top:"-7px",display:"grid",minWidth:"20px",height:"20px",padding:"0 4px",placeItems:"center",color:"white",fontSize:"9px",fontWeight:"900",background:"#071d49",border:"2px solid white",borderRadius:"50%"});
+    el.querySelector("svg").style.cssText = "display:block;width:24px;height:24px";
     el.addEventListener("click", () => editItem(index));
     return new mapboxgl.Marker({element:el,anchor:"center"}).setLngLat(item.coordinates).addTo(map);
   }
@@ -92,7 +91,6 @@
   function updatePreview() {
     const iconKey = selectedIcon();
     $("previewIcon").innerHTML = icons[iconKey] || icons.default;
-    $("previewNumber").textContent = fields.number.value.trim() || "1";
     $("previewTitle").textContent = fields.title.value.trim() || "Hotspot name";
     $("previewMeta").textContent = venueValues().category;
   }

@@ -14,9 +14,8 @@
       const pulse=document.createElement("span"); pulse.className="hotspot-pulse";
       const button=document.createElement("button"); button.className="hotspot"; button.type="button"; button.setAttribute("aria-label",`Open information about ${item.title}`);
       const icon=document.createElement("span"); icon.className="hotspot__icon"; const key=icons[item.icon]?item.icon:(defaults[item.filterCategory]||"default"); icon.innerHTML=icons[key];
-      const number=document.createElement("span"); number.className="hotspot__number"; number.textContent=item.number;
       const label=document.createElement("span"); label.className="hotspot-label"; label.textContent=item.shortLabel || item.title;
-      button.append(icon,number); wrapper.append(pulse,button,label);
+      button.append(icon); wrapper.append(pulse,button,label);
       const link = item.link && item.link !== "#" ? `<a class="popup-button" href="${esc(item.link)}" target="_blank" rel="noopener noreferrer">${esc(item.buttonLabel||"View details")}</a>` : "";
       const popup=new mapboxgl.Popup({offset:34,closeButton:true,closeOnClick:true,focusAfterOpen:true}).setHTML(`<article><div class="popup-hero"><span class="popup-category">${esc(item.category)}</span></div><div class="popup-body"><h2>${esc(item.title)}</h2><div class="popup-time">${esc(item.time)}</div><p>${esc(item.description)}</p>${link}</div></article>`);
       new mapboxgl.Marker({element:wrapper,anchor:"center"}).setLngLat(item.coordinates).setPopup(popup).addTo(map);
