@@ -110,5 +110,21 @@
     ],
     "buttonLabel": "Find out more",
     "link": "#"
+  },
+  {
+    "number": "8",
+    "title": "Museum of Islamic Art",
+    "shortLabel": "Museum",
+    "category": "Experience",
+    "filterCategory": "experience",
+    "icon": "star",
+    "description": "Explore everything the Museum of Islamic Art has to offer in this beautiful building.",
+    "time": "All day every day, except Saturdays",
+    "coordinates": [
+      51.539558,
+      25.294953
+    ],
+    "buttonLabel": "Find out more",
+    "link": "#"
   }
 ]
