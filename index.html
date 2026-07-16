@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1"
+  />
+
+  <title>NBA Doha Event Map</title>
+
+  <link
+    href="https://api.mapbox.com/mapbox-gl-js/v3.25.0/mapbox-gl.css"
+    rel="stylesheet"
+  />
+
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.25.0/mapbox-gl.js"></script>
+
+  <style>
+    :root {
+      --navy: #071d49;
+      --blue: #17408b;
+      --red: #c8102e;
+      --white: #ffffff;
+      --off-white: #f4f6f9;
+      --black: #090b10;
+      --orange: #f28c28;
+      --panel-shadow: 0 18px 50px rgba(0, 0, 0, 0.32);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--navy);
+    }
+
+    button,
+    a {
+      font: inherit;
+    }
+
+    #map {
+      position: absolute;
+      inset: 0;
+    }
+
+    /*
+     * Darkens the map slightly so the interface and markers stand out.
+     */
+    #map::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background:
+        linear-gradient(
+          to bottom,
+          rgba(7, 29, 73, 0.18),
+          transparent 35%,
+          rgba(7, 29, 73, 0.15)
+        );
+    }
+
+    /*
+     * Top event header
+     */
+    .event-header {
+      position: absolute;
+      z-index: 5;
+      top: 20px;
+      left: 20px;
+      display: flex;
+      align-items: stretch;
+      width: min(520px, calc(100% - 40px));
+      overflow: hidden;
+      color: var(--white);
+      background: rgba(7, 29, 73, 0.96);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 16px;
+      box-shadow: var(--panel-shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    .event-header__accent {
+      width: 8px;
+      flex: 0 0 8px;
+      background: var(--red);
+    }
+
+    .event-header__content {
+      flex: 1;
+      padding: 17px 20px 18px;
+    }
+
+    .event-header__eyebrow {
+      margin-bottom: 5px;
+      color: rgba(255, 255, 255, 0.68);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .event-header h1 {
+      margin: 0;
+      font-size: clamp(23px, 4vw, 34px);
+      font-weight: 900;
+      line-height: 0.98;
+      letter-spacing: -1px;
+      text-transform: uppercase;
+    }
+
+    .event-header p {
+      max-width: 400px;
+      margin: 9px 0 0;
+      color: rgba(255, 255, 255, 0.78);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    /*
+     * Map category controls
+     */
+    .map-filters {
+      position: absolute;
+      z-index: 5;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      gap: 8px;
+      padding: 8px;
+      background: rgba(9, 11, 16, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      border-radius: 14px;
+      box-shadow: var(--panel-shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    .filter-button {
+      min-height: 38px;
+      padding: 0 14px;
+      color: rgba(255, 255, 255, 0.72);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      background: transparent;
+      border: 0;
+      border-radius: 9px;
+      cursor: pointer;
+      transition:
+        color 160ms ease,
+        background 160ms ease,
+        transform 160ms ease;
+    }
+
+    .filter-button:hover {
+      color: var(--white);
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .filter-button.active {
+      color: var(--white);
+      background: var(--red);
+    }
+
+    .filter-button:active {
+      transform: scale(0.96);
+    }
+
+    /*
+     * Basketball-style markers
+     */
+    .hotspot-wrapper {
+      position: absolute;
+      width: 52px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hotspot {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 52px;
+      height: 52px;
+      padding: 0;
+      color: var(--black);
+      background:
+        radial-gradient(
+          circle at 35% 28%,
+          #ffb156 0%,
+          var(--orange) 46%,
+          #d56b10 100%
+        );
+      border: 4px solid var(--white);
+      border-radius: 50%;
+      box-shadow:
+        0 7px 16px rgba(0, 0, 0, 0.4),
+        0 0 0 4px rgba(200, 16, 46, 0.82);
+      cursor: pointer;
+      transition:
+        transform 180ms ease,
+        box-shadow 180ms ease;
+    }
+
+    /*
+     * Basketball seams
+     */
+    .hotspot::before,
+    .hotspot::after {
+      content: "";
+      position: absolute;
+      pointer-events: none;
+    }
+
+    .hotspot::before {
+      width: 42px;
+      height: 16px;
+      border-top: 2px solid rgba(20, 10, 0, 0.72);
+      border-bottom: 2px solid rgba(20, 10, 0, 0.72);
+      border-radius: 50%;
+      transform: rotate(-18deg);
+    }
+
+    .hotspot::after {
+      width: 2px;
+      height: 43px;
+      background: rgba(20, 10, 0, 0.72);
+      border-radius: 2px;
+      transform: rotate(28deg);
+    }
+
+    .hotspot__number {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 23px;
+      height: 23px;
+      padding: 0 5px;
+      color: var(--white);
+      font-size: 12px;
+      font-weight: 900;
+      background: var(--navy);
+      border: 2px solid var(--white);
+      border-radius: 50%;
+    }
+
+    .hotspot:hover,
+    .hotspot:focus-visible,
+    .hotspot.is-active {
+      transform: translateY(-4px) scale(1.1);
+      outline: none;
+      box-shadow:
+        0 12px 24px rgba(0, 0, 0, 0.46),
+        0 0 0 5px rgba(200, 16, 46, 1);
+    }
+
+    /*
+     * Animated marker pulse
+     */
+    .hotspot-pulse {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      pointer-events: none;
+      border: 3px solid var(--red);
+      border-radius: 50%;
+      animation: hotspot-pulse 2s infinite;
+    }
+
+    @keyframes hotspot-pulse {
+      0% {
+        opacity: 0.75;
+        transform: scale(0.8);
+      }
+
+      100% {
+        opacity: 0;
+        transform: scale(1.75);
+      }
+    }
+
+    /*
+     * Hotspot text label
+     */
+    .hotspot-label {
+      position: absolute;
+      top: 62px;
+      left: 50%;
+      width: max-content;
+      max-width: 150px;
+      padding: 6px 9px;
+      color: var(--white);
+      font-size: 10px;
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: 0.5px;
+      text-align: center;
+      text-transform: uppercase;
+      background: rgba(7, 29, 73, 0.96);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 6px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.25);
+      transform: translateX(-50%);
+    }
+
+    /*
+     * Popup styling
+     */
+    .mapboxgl-popup {
+      z-index: 10;
+      width: min(330px, calc(100vw - 30px));
+      max-width: none !important;
+    }
+
+    .mapboxgl-popup-content {
+      padding: 0;
+      overflow: hidden;
+      color: var(--black);
+      background: var(--white);
+      border-radius: 16px;
+      box-shadow: var(--panel-shadow);
+    }
+
+    .mapboxgl-popup-tip {
+      border-top-color: var(--white) !important;
+    }
+
+    .mapboxgl-popup-close-button {
+      z-index: 4;
+      top: 10px;
+      right: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      color: var(--white);
+      font-size: 24px;
+      line-height: 1;
+      background: rgba(7, 29, 73, 0.82);
+      border-radius: 50%;
+      transition: background 160ms ease;
+    }
+
+    .mapboxgl-popup-close-button:hover {
+      background: var(--red);
+    }
+
+    .popup-card {
+      overflow: hidden;
+      background: var(--white);
+    }
+
+    .popup-hero {
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      min-height: 128px;
+      padding: 20px;
+      overflow: hidden;
+      color: var(--white);
+      background:
+        linear-gradient(
+          135deg,
+          rgba(7, 29, 73, 0.98),
+          rgba(23, 64, 139, 0.94) 55%,
+          rgba(200, 16, 46, 0.92)
+        );
+    }
+
+    /*
+     * Court-line decoration
+     */
+    .popup-hero::before {
+      content: "";
+      position: absolute;
+      right: -35px;
+      bottom: -70px;
+      width: 180px;
+      height: 180px;
+      border: 3px solid rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+    }
+
+    .popup-hero::after {
+      content: "";
+      position: absolute;
+      right: 43px;
+      bottom: -5px;
+      width: 3px;
+      height: 150px;
+      background: rgba(255, 255, 255, 0.18);
+      transform: rotate(40deg);
+    }
+
+    .popup-category {
+      position: relative;
+      z-index: 2;
+      display: inline-block;
+      padding: 6px 9px;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      background: var(--red);
+      border-radius: 5px;
+    }
+
+    .popup-body {
+      padding: 19px 20px 21px;
+    }
+
+    .popup-body h2 {
+      margin: 0;
+      color: var(--navy);
+      font-size: 24px;
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -0.7px;
+      text-transform: uppercase;
+    }
+
+    .popup-time {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin: 10px 0 12px;
+      color: var(--red);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+    }
+
+    .popup-time::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      flex: 0 0 7px;
+      background: var(--red);
+      border-radius: 50%;
+    }
+
+    .popup-body p {
+      margin: 0;
+      color: #454a54;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .popup-actions {
+      display: flex;
+      gap: 9px;
+      margin-top: 17px;
+    }
+
+    .popup-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 15px;
+      color: var(--white);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      text-decoration: none;
+      text-transform: uppercase;
+      background: var(--blue);
+      border-radius: 7px;
+      transition:
+        background 160ms ease,
+        transform 160ms ease;
+    }
+
+    .popup-button:hover {
+      background: var(--navy);
+      transform: translateY(-1px);
+    }
+
+    /*
+     * Mapbox controls
+     */
+    .mapboxgl-ctrl-group {
+      overflow: hidden;
+      background: rgba(7, 29, 73, 0.94);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      box-shadow: var(--panel-shadow);
+    }
+
+    .mapboxgl-ctrl-group button {
+      filter: invert(1);
+    }
+
+    .mapboxgl-ctrl-group button + button {
+      border-top-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .mapboxgl-ctrl-attrib {
+      font-size: 9px;
+    }
+
+    /*
+     * Mobile layout
+     */
+    @media (max-width: 760px) {
+      .event-header {
+        top: 12px;
+        left: 12px;
+        width: calc(100% - 24px);
+      }
+
+      .event-header__content {
+        padding: 13px 15px 14px;
+      }
+
+      .event-header h1 {
+        font-size: 24px;
+      }
+
+      .event-header p {
+        margin-top: 6px;
+        font-size: 11px;
+      }
+
+      .map-filters {
+        top: auto;
+        right: 12px;
+        bottom: 18px;
+        left: 12px;
+        justify-content: space-between;
+        overflow-x: auto;
+      }
+
+      .filter-button {
+        flex: 1;
+        min-width: max-content;
+        padding: 0 10px;
+        font-size: 10px;
+      }
+
+      .hotspot {
+        width: 46px;
+        height: 46px;
+      }
+
+      .hotspot::before {
+        width: 36px;
+        height: 14px;
+      }
+
+      .hotspot::after {
+        height: 37px;
+      }
+
+      .hotspot-pulse {
+        width: 52px;
+        height: 52px;
+      }
+
+      .hotspot-label {
+        display: none;
+      }
+
+      .mapboxgl-ctrl-bottom-right {
+        bottom: 80px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .hotspot-pulse {
+        animation: none;
+      }
+
+      .hotspot,
+      .popup-button,
+      .filter-button {
+        transition: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="event-header">
+    <div class="event-header__accent"></div>
+
+    <div class="event-header__content">
+      <div class="event-header__eyebrow">
+        Basketball comes to Qatar
+      </div>
+
+      <h1>NBA Doha</h1>
+
+      <p>
+        Explore the event map and tap the basketball markers to discover
+        experiences, activities, food and merchandise.
+      </p>
+    </div>
+  </header>
+
+  <nav class="map-filters" aria-label="Filter map locations">
+    <button class="filter-button active" data-filter="all">
+      All
+    </button>
+
+    <button class="filter-button" data-filter="experience">
+      Experiences
+    </button>
+
+    <button class="filter-button" data-filter="activity">
+      Activities
+    </button>
+
+    <button class="filter-button" data-filter="food">
+      Food
+    </button>
+
+    <button class="filter-button" data-filter="retail">
+      Store
+    </button>
+  </nav>
+
+  <main id="map" aria-label="NBA Doha interactive event map"></main>
+
+  <script>
+    /*
+     * Paste your Mapbox public token below.
+     */
+    mapboxgl.accessToken = "pk.eyJ1IjoiYmVuc2NyYXdmb3JkIiwiYSI6ImNtcm5mcWFmdjAzcjkyenBoYnVjM2Zja2wifQ.KJsiKGVn78MS8tUgSCOryg";
+
+    /*
+     * Replace this with the centre of your actual venue or event area.
+     * Coordinate order is [longitude, latitude].
+     */
+    const mapCenter = [51.531, 25.286];
+
+    const map = new mapboxgl.Map({
+      container: "map",
+      style: "mapbox://styles/mapbox/standard",
+      center: mapCenter,
+      zoom: 13.2,
+      pitch: 0,
+      bearing: 0,
+
+      /*
+       * Mapbox Standard supports runtime visual configuration.
+       */
+      config: {
+        basemap: {
+          lightPreset: "night",
+          showPointOfInterestLabels: false,
+          showTransitLabels: false,
+          showRoadLabels: true,
+          showPlaceLabels: true
+        }
+      }
+    });
+
+    /*
+     * Replace these sample locations and coordinates with your real ones.
+     */
+    const hotspots = [
+      {
+        number: "1",
+        title: "NBA Fan Zone",
+        shortLabel: "Fan Zone",
+        category: "Experience",
+        filterCategory: "experience",
+        description:
+          "Music, entertainment, basketball challenges and special guest appearances throughout the event.",
+        time: "September 1st - 3rd",
+        coordinates: [51.5322, 25.2867],
+        buttonLabel: "View programme",
+        link: "#"
+      },
+      {
+        number: "2",
+        title: "The Gate Mall",
+        shortLabel: "The Gate Mall",
+        category: "Mall",
+        filterCategory: "retail",
+        description:
+          "Come see what's on offer at The Gate Mall",
+        time: "Open Friday 1st - Tuesday 5th September",
+        coordinates: [51.526842, 25.323639],
+        buttonLabel: "See activity",
+        link: "#"
+      },
+      {
+        number: "3",
+        title: "NBA Store",
+        shortLabel: "NBA Store",
+        category: "Merchandise",
+        filterCategory: "retail",
+        description:
+          "Shop jerseys, apparel, accessories and event-exclusive products.",
+        time: "Open until 10:00 PM",
+        coordinates: [51.541, 25.2825],
+        buttonLabel: "Explore store",
+        link: "#"
+      },
+      {
+        number: "4",
+        title: "Food Court",
+        shortLabel: "Food Court",
+        category: "Food and drink",
+        filterCategory: "food",
+        description:
+          "Discover a selection of local favourites and international food options.",
+        time: "Open throughout the event",
+        coordinates: [51.536, 25.278],
+        buttonLabel: "View food options",
+        link: "#"
+      },
+      {
+        number: "5",
+        title: "Al Asmakh Mall",
+        shortLabel: "Al Asmakh Mall",
+        category: "Shopping Mall",
+        filterCategory: "retail",
+        description:
+          "Come see what's on offer at Al Asmakh Mall",
+        time: "Open throughout September",
+        coordinates: [51.496209, 25.282586],
+        buttonLabel: "View mall",
+        link: "https://www.centrepointstores.com/qa/en"
+      }
+    ];
+
+    /*
+     * Store references to each marker so they can be filtered.
+     */
+    const renderedMarkers = [];
+
+    hotspots.forEach((hotspot) => {
+      const markerWrapper = document.createElement("div");
+      markerWrapper.className = "hotspot-wrapper";
+      markerWrapper.dataset.category = hotspot.filterCategory;
+
+      const pulse = document.createElement("span");
+      pulse.className = "hotspot-pulse";
+
+      const markerButton = document.createElement("button");
+      markerButton.className = "hotspot";
+      markerButton.type = "button";
+      markerButton.setAttribute(
+        "aria-label",
+        `Open information about ${hotspot.title}`
+      );
+
+      const markerNumber = document.createElement("span");
+      markerNumber.className = "hotspot__number";
+      markerNumber.textContent = hotspot.number;
+
+      const markerLabel = document.createElement("span");
+      markerLabel.className = "hotspot-label";
+      markerLabel.textContent = hotspot.shortLabel;
+
+      markerButton.appendChild(markerNumber);
+      markerWrapper.appendChild(pulse);
+      markerWrapper.appendChild(markerButton);
+      markerWrapper.appendChild(markerLabel);
+
+      const popupHTML = `
+        <article class="popup-card">
+          <div class="popup-hero">
+            <span class="popup-category">
+              ${hotspot.category}
+            </span>
+          </div>
+
+          <div class="popup-body">
+            <h2>${hotspot.title}</h2>
+
+            <div class="popup-time">
+              ${hotspot.time}
+            </div>
+
+            <p>${hotspot.description}</p>
+
+            <div class="popup-actions">
+              <a
+                class="popup-button"
+                href="${hotspot.link}"
+                target="_blank"
+              >
+                ${hotspot.buttonLabel}
+              </a>
+            </div>
+          </div>
+        </article>
+      `;
+
+      const popup = new mapboxgl.Popup({
+        offset: 34,
+        closeButton: true,
+        closeOnClick: true,
+        focusAfterOpen: true
+      }).setHTML(popupHTML);
+      
+      const marker = new mapboxgl.Marker({
+        element: markerWrapper,
+        anchor: "center"
+      })
+        .setLngLat(hotspot.coordinates)
+        .setPopup(popup)
+        .addTo(map);
+
+      markerButton.addEventListener("click", () => {
+        document
+          .querySelectorAll(".hotspot")
+          .forEach((button) => button.classList.remove("is-active"));
+
+        markerButton.classList.add("is-active");
+
+        map.flyTo({
+          center: hotspot.coordinates,
+          zoom: Math.max(map.getZoom(), 14.2),
+          pitch: 0,
+          duration: 750,
+          essential: true
+        });
+      });
+
+      popup.on("close", () => {
+        markerButton.classList.remove("is-active");
+      });
+
+      renderedMarkers.push({
+        marker,
+        element: markerWrapper,
+        category: hotspot.filterCategory
+      });
+    });
+
+    /*
+     * Category filter behaviour.
+     */
+    const filterButtons = document.querySelectorAll(".filter-button");
+
+    filterButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const selectedCategory = button.dataset.filter;
+
+        filterButtons.forEach((item) => {
+          item.classList.remove("active");
+        });
+
+        button.classList.add("active");
+
+        renderedMarkers.forEach((item) => {
+          const shouldShow =
+            selectedCategory === "all" ||
+            item.category === selectedCategory;
+
+          item.element.style.display = shouldShow ? "flex" : "none";
+        });
+      });
+    });
+
+    /*
+     * Navigation controls.
+     */
+    map.addControl(
+      new mapboxgl.NavigationControl({
+        visualizePitch: true,
+        showCompass: true
+      }),
+      "bottom-right"
+    );
+
+    /*
+     * Avoid accidentally zooming the map while scrolling the parent page.
+     */
+    map.scrollZoom.enable();
+
+    /*
+     * Allow scroll zoom after the user actively clicks the map.
+     */
+    map.on("click", () => {
+      map.scrollZoom.enable();
+    });
+
+    let coordinatePickerMarker;
+
+
+  </script>
+</body>
+</html>
