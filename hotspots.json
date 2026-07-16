@@ -5,12 +5,12 @@
     "shortLabel": "Fan Zone",
     "category": "Experience",
     "filterCategory": "experience",
-    "icon": "entertainment",
+    "icon": "basketball",
     "description": "Music, entertainment, basketball challenges and special guest appearances throughout the event.",
     "time": "September 1st - 3rd",
     "coordinates": [
-      51.5322,
-      25.2867
+      51.532487,
+      25.286482
     ],
     "buttonLabel": "View programme",
     "link": "#"
@@ -93,6 +93,22 @@
       25.307632
     ],
     "buttonLabel": "See menu",
+    "link": "#"
+  },
+  {
+    "number": "7",
+    "title": "InterContinental Hotel",
+    "shortLabel": "Hotel",
+    "category": "Hotel",
+    "filterCategory": "hotel",
+    "icon": "hotel",
+    "description": "This is the InterContinental Hotel",
+    "time": "24/7",
+    "coordinates": [
+      51.529168,
+      25.348068
+    ],
+    "buttonLabel": "Find out more",
     "link": "#"
   }
 ]
